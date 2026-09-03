@@ -1,9 +1,13 @@
-# Arduino / PlatformIO build output
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+host/.venv/
 build/
-.pio/
 *.bin
+.arduino/
 *.elf
 *.map
-
-# macOS
-.DS_Store
+dashboard/floorplan-local.*
+vendor/esp32-radar/.git/
+firmware/**/build/

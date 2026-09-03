@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>xraywifi</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="mark">●</span>
+      <h1>xraywifi</h1>
+      <span id="conn" class="pill off">offline</span>
+    </div>
+    <nav class="tabs">
+      <button type="button" class="tab on" data-tab="radar">Radar</button>
+      <button type="button" class="tab" data-tab="map">Map</button>
+    </nav>
+    <div class="filters">
+      <button type="button" id="openWizard" class="cal-btn">Calibrate</button>
+      <label>Show
+        <select id="kind">
+          <option value="BOTH">Wi-Fi + BLE</option>
+          <option value="WIFI">Wi-Fi only</option>
+          <option value="BLE">BLE only</option>
+        </select>
+      </label>
+      <div id="nodeToggles" class="node-toggles"></div>
+    </div>
+  </header>
+
+  <section id="nodes" class="nodes"></section>
+
+  <main id="view-radar" class="view">
+    <div class="scope-wrap">
+      <canvas id="scope" width="720" height="720"></canvas>
+      <div class="scope-legend">
+        <span class="sw wifi">encrypted AP</span>
+        <span class="sw open">open AP</span>
+        <span class="sw ble">BLE</span>
+        <span class="sw stale">stale &gt;20s</span>
+      </div>
+    </div>
+    <aside class="side">
+      <div class="cal">
+        <h2>Range rings</h2>
+        <label>Ring labels
+          <select id="ringLabelMode">
+            <option value="metres">metres</option>
+            <option value="dBm">dBm</option>
+          </select>
+        </label>
+        <label>Centre (strong)
+          <input id="rssiNear" type="range" min="-70" max="-20" value="-30" />
+          <output id="rssiNearOut">-30 dBm</output>
+        </label>
+        <label>Rim (weak)
+          <input id="rssiFar" type="range" min="-100" max="-50" value="-95" />
+          <output id="rssiFarOut">-95 dBm</output>
+        </label>
+        <p class="hint">Metre mode uses Map calibration (P0, d0, n). Stronger signal sits nearer the centre. Display only — does not change the boards.</p>
+      </div>
+      <div class="list-head">
+        <h2>Contacts</h2>
+        <span id="count" class="muted">0</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Brg</th>
+              <th>Best</th>
+              <th>Dist</th>
+              <th id="rssiHeads"></th>
+              <th>Age</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </aside>
+  </main>
+
+  <main id="view-map" class="view hidden">
+    <div class="map-wrap">
+      <canvas id="map" width="900" height="640"></canvas>
+      <div class="map-tools">
+        <label class="file">
+          Floor plan
+          <input id="floor" type="file" accept="image/*" />
+        </label>
+        <button type="button" id="clearFloor">Clear image</button>
+        <button type="button" id="resetNodes">Reset node positions</button>
+        <button type="button" id="openWizardMap" class="cal-btn">Calibrate</button>
+      </div>
+    </div>
+    <aside class="side">
+      <div class="cal">
+        <h2>RSSI → distance</h2>
+        <label>P0 (dBm at d0)
+          <input id="p0" type="range" min="-70" max="-20" value="-40" />
+          <output id="p0Out">-40 dBm</output>
+        </label>
+        <label>d0
+          <input id="d0" type="range" min="0.5" max="5" step="0.1" value="1" />
+          <output id="d0Out">1.0 m</output>
+        </label>
+        <label>Path loss n
+          <input id="nExp" type="range" min="1.5" max="4.5" step="0.1" value="2.5" />
+          <output id="nExpOut">2.5</output>
+        </label>
+        <label>Room width
+          <input id="roomW" type="range" min="4" max="40" step="0.5" value="12" />
+          <output id="roomWOut">12 m</output>
+        </label>
+        <label>Room depth
+          <input id="roomH" type="range" min="4" max="40" step="0.5" value="8" />
+          <output id="roomHOut">8 m</output>
+        </label>
+        <p class="hint">Drag the A/B/C markers onto the plan. Pick a contact below (Wi-Fi BSSIDs stay put; BLE addresses rotate). Walk a known device and tweak n until the blob tracks — or use Calibrate for voice-guided setup.</p>
+      </div>
+      <div class="list-head">
+        <h2>Track</h2>
+        <span id="trackMeta" class="muted">none selected</span>
+      </div>
+      <div id="fix" class="fix">Select a contact seen by two or more nodes.</div>
+      <div class="table-wrap short">
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Name</th>
+              <th>Seen by</th>
+              <th>Best</th>
+              <th>Dist</th>
+            </tr>
+          </thead>
+          <tbody id="mapRows"></tbody>
+        </table>
+      </div>
+    </aside>
+  </main>
+
+  <div id="wizard" class="wizard hidden" aria-hidden="true">
+    <div class="wizard-panel">
+      <header class="wizard-head">
+        <h2>Calibration wizard</h2>
+        <span id="wizardStep" class="wizard-step">Step 1 of 6</span>
+        <button type="button" id="wizardClose" class="wizard-close" aria-label="Close">×</button>
+      </header>
+      <div id="wizardBanner" class="wizard-banner hidden"></div>
+      <p id="wizardPrompt" class="wizard-prompt"></p>
+      <div id="wizardLive" class="wizard-live"></div>
+      <div id="wizardDetail" class="wizard-detail"></div>
+      <div class="wizard-actions">
+        <button type="button" id="wizardBack">Back</button>
+        <button type="button" id="wizardRepeat">Repeat</button>
+        <button type="button" id="wizardCapture" class="hidden">Capture</button>
+        <button type="button" id="wizardNext">Next</button>
+      </div>
+      <div class="wizard-mic">
+        <span id="wizardMic" class="mic-dot off"></span>
+        <span id="wizardMicLabel">Voice off — use buttons</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="wizard.js"></script>
+</body>
+</html>
